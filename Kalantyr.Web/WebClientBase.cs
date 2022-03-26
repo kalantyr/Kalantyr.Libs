@@ -13,6 +13,14 @@ namespace Kalantyr.Web
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IRequestEnricher _requestEnricher;
+
+        protected IRequestEnricher RequestEnricher => _requestEnricher;
+
+        private static readonly JsonSerializerOptions JsonSerializerOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
         private const string ContentType = "application/json";
 
         protected HttpClientBase(IHttpClientFactory httpClientFactory, IRequestEnricher requestEnricher)
@@ -43,11 +51,13 @@ namespace Kalantyr.Web
                 {
                     Debug.WriteLine(method + " " + httpClient.BaseAddress + path);
                     if (method != HttpMethod.Get)
-                        Debug.WriteLine(body);
+                        if (!string.IsNullOrEmpty(body))
+                            Debug.WriteLine(body);
                 }
 
                 if (method != HttpMethod.Get)
-                    requestMessage.Content = new StringContent(body, Encoding.UTF8, ContentType);
+                    if (!string.IsNullOrEmpty(body))
+                        requestMessage.Content = new StringContent(body, Encoding.UTF8, ContentType);
 
                 requestMessage.Headers.Add("Accept", ContentType);
 
@@ -70,7 +80,7 @@ namespace Kalantyr.Web
                     if (typeof(T) == typeof(string))
                         return (T)(object)response;
 
-                    return JsonSerializer.Deserialize<T>(response);
+                    return JsonSerializer.Deserialize<T>(response, JsonSerializerOptions);
 
                 case HttpStatusCode.NoContent:
                     return default;
