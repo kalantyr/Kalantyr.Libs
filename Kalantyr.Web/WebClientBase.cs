@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,9 +17,10 @@ namespace Kalantyr.Web
 
         protected IRequestEnricher RequestEnricher => _requestEnricher;
 
-        private static readonly JsonSerializerOptions JsonSerializerOptions = new JsonSerializerOptions
+        private static readonly JsonSerializerOptions JsonSerializerOptions = new()
         {
-            PropertyNameCaseInsensitive = true
+            PropertyNameCaseInsensitive = true,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
 
         private const string ContentType = "application/json";
@@ -28,6 +30,7 @@ namespace Kalantyr.Web
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _requestEnricher = requestEnricher;
         }
+        
         protected async Task<T> Get<T>(string path, CancellationToken cancellationToken)
         {
             return await SendAsync<T>(HttpMethod.Get, path, null, cancellationToken);
@@ -95,6 +98,11 @@ namespace Kalantyr.Web
                     else
                         throw new Exception($"HTTP {(int)result.StatusCode} {result.StatusCode}", new Exception(response));
             }
+        }
+
+        protected string Serialize(object value)
+        {
+            return JsonSerializer.Serialize(value, JsonSerializerOptions);
         }
     }
 }
