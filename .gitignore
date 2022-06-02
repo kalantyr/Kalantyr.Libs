@@ -1,3 +1,5 @@
 /.vs
 /Kalantyr.Web/obj
 /Kalantyr.Web/bin
+/Kalantyr.Web.Tests/bin
+/Kalantyr.Web.Tests/obj

@@ -20,7 +20,7 @@ namespace Kalantyr.Web
         private static readonly JsonSerializerOptions JsonSerializerOptions = new()
         {
             PropertyNameCaseInsensitive = true,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault
         };
 
         private const string ContentType = "application/json";
@@ -46,27 +46,25 @@ namespace Kalantyr.Web
             var httpClient = _httpClientFactory.CreateClient(GetType().Name);
 
             var uri = string.Join("/", httpClient.BaseAddress.AbsoluteUri.TrimEnd('/'), path.TrimStart('/'));
-            using (var requestMessage = new HttpRequestMessage(method, new Uri(uri, UriKind.Absolute)))
+            using var requestMessage = new HttpRequestMessage(method, new Uri(uri, UriKind.Absolute));
+            _requestEnricher?.Enrich(requestMessage.Headers);
+
+            if (Debugger.IsAttached)
             {
-                _requestEnricher?.Enrich(requestMessage.Headers);
-
-                if (Debugger.IsAttached)
-                {
-                    Debug.WriteLine(method + " " + httpClient.BaseAddress + path);
-                    if (method != HttpMethod.Get)
-                        if (!string.IsNullOrEmpty(body))
-                            Debug.WriteLine(body);
-                }
-
+                Debug.WriteLine(method + " " + httpClient.BaseAddress + path);
                 if (method != HttpMethod.Get)
                     if (!string.IsNullOrEmpty(body))
-                        requestMessage.Content = new StringContent(body, Encoding.UTF8, ContentType);
-
-                requestMessage.Headers.Add("Accept", ContentType);
-
-                using (var result = await httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseContentRead, cancellationToken))
-                    return await FromResponse<T>(result);
+                        Debug.WriteLine(body);
             }
+
+            if (method != HttpMethod.Get)
+                if (!string.IsNullOrEmpty(body))
+                    requestMessage.Content = new StringContent(body, Encoding.UTF8, ContentType);
+
+            requestMessage.Headers.Add("Accept", ContentType);
+
+            using var result = await httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseContentRead, cancellationToken);
+            return await FromResponse<T>(result);
         }
 
         internal async Task<T> FromResponse<T>(HttpResponseMessage result)
@@ -100,7 +98,7 @@ namespace Kalantyr.Web
             }
         }
 
-        protected string Serialize(object value)
+        public static string Serialize(object value)
         {
             return JsonSerializer.Serialize(value, JsonSerializerOptions);
         }
